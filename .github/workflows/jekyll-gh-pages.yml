@@ -1,38 +1,61 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
-  <title>Hello, World!</title>
-</head>
-<body>
-  <h1>
-    <a href="/storage/emulated/0/jxn/newwebpage/htmlpages/scripts/newfile.html">Redirect</a>
-  </h1>
-</body>
-</html>
 
+name: Build & deploy two sites to GitHub Pages
 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
+jobs:
+  build-and-deploy-two:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: jekyll-two-sites
+      cancel-in-progress: true
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
 
-<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
-  <title>BADY</title>
-</head>
-<body>
-  <div style="background:black;">
-    <h2 style="color:violet; font-size:14px; font-weight:300px; float:left;">
-      <strong>SORRY</strong>MAN DONT OPEN ANYTHING YOU SEE PON YO PHONE.Relax breda in christ.
-    </h2>
-</div>
-<div style="background:blue; margin-left:50px; margin-right:180px;">
-<h3 style="color:cyan; border:2px dotted pink;">
-  Listen Now
-  <audio src="mat.mp4" controls muted>sorry.</audio>
-</h3>
-</div>
-</body>
-</html>
+      - name: Install dependencies (if you use a common Gemfile)
+        run: |
+          gem install bundler
+          if [ -f Gemfile ]; then bundle install --jobs 4 --retry 3; fi
+
+      # Build site-one into _site/site-one
+      - name: Build site-one
+        run: |
+          mkdir -p ./_site/site-one
+          if [ -f site-one/_config.yml ]; then
+            bundle exec jekyll build --source site-one --destination ./_site/site-one
+          else
+            # fallback: copy plain HTML folder
+            cp -r site-one/* ./_site/site-one/ || true
+          fi
+
+      # Build site-two into _site/site-two
+      - name: Build site-two
+        run: |
+          mkdir -p ./_site/site-two
+          if [ -f site-two/_config.yml ]; then
+            bundle exec jekyll build --source site-two --destination ./_site/site-two
+          else
+            cp -r site-two/* ./_site/site-two/ || true
+          fi
+
+      - name: Show artifact size (debug)
+        run: du -sh _site || true
+
+      - name: Deploy combined _site to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@jemothefighter.noreply.github.com
